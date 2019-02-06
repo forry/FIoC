@@ -1,0 +1,75 @@
+cmake_minimum_required(VERSION 3.0)
+
+project("FIoC" 
+         VERSION 0.1.0.0
+         DESCRIPTION "Lightweight C++ IoC implementation"
+)
+
+IF (TARGET ${PROJECT_NAME})
+    return()
+ENDIF (TARGET ${PROJECT_NAME})
+
+include(GNUInstallDirs)
+
+option(${PROJECT_NAME}_COMPILE_TESTS "Configure tests to compile" OFF )
+
+set(${PROJECT_NAME}_PATH "FIoC")
+set(TESTS_PATH "tests")
+
+set(${PROJECT_NAME}_HEADERS
+   ${${PROJECT_NAME}_PATH}/FIoC.h
+)
+
+add_library(${PROJECT_NAME} INTERFACE)
+
+target_include_directories(${PROJECT_NAME} INTERFACE
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+)
+
+set(HEADER_PATH src)
+set(SOURCE_PATH src)
+get_filename_component(src_abs ${SOURCE_PATH} ABSOLUTE)
+
+
+set(TESTS_FILES 
+   ${TESTS_PATH}/main.cpp
+)
+
+
+if(${${PROJECT_NAME}_COMPILE_TESTS})
+   add_executable(${PROJECT_NAME}_tests ${TESTS_FILES} ${${PROJECT_NAME}_HEADERS})
+   target_include_directories(${PROJECT_NAME}_tests PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+   )
+   set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT ${PROJECT_NAME}_tests)
+   
+   install(TARGETS ${PROJECT_NAME}_tests DESTINATION ${CMAKE_INSTALL_BINDIR})
+endif()
+
+
+# INSTALL
+set(HEADER_INSTALL_DIR ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}) 
+set(CONFIG_INSTALL_DIR ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME})
+
+file(WRITE ${PROJECT_NAME}Config.cmake "include(\"${CMAKE_CURRENT_LIST_DIR}/${PROJECT_NAME}Targets.cmake\")")
+
+
+install(FILES ${${PROJECT_NAME}_HEADERS} DESTINATION ${HEADER_INSTALL_DIR})
+install(TARGETS ${PROJECT_NAME} EXPORT ${PROJECT_NAME}Targets)
+install(FILES ${PROJECT_NAME}Config.cmake DESTINATION ${CONFIG_INSTALL_DIR})
+
+install(EXPORT ${PROJECT_NAME}Targets 
+    NAMESPACE ${PROJECT_NAME}::
+    DESTINATION ${CONFIG_INSTALL_DIR}
+)
+
+# Buildtree export
+export(EXPORT ${PROJECT_NAME}Targets
+   NAMESPACE ${PROJECT_NAME}::
+   FILE "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Targets.cmake"
+)
+configure_file(${PROJECT_NAME}Config.cmake ${PROJECT_NAME}Config.cmake COPYONLY)
+
+export(PACKAGE ${PROJECT_NAME})
