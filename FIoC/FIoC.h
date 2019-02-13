@@ -6,16 +6,20 @@
 namespace fioc
 {
 
-
-   class IFunction
+   template<typename _ReturnType, typename ...Arguments>
+   class Functor
    {
    public:
-      virtual void* call() = 0;
+      using ReturnType = _ReturnType;
+
+      virtual ReturnType operator()(Arguments...args) = 0;
    };
+
+   using ConstructorFunctor = Functor<void*>;
 
 
    template <typename R, typename ...ARGS>
-   class MyFunction : public IFunction
+   class FactoryFunctor : public ConstructorFunctor
    {
    public:
       R retVal;
@@ -23,9 +27,9 @@ namespace fioc
 
       std::function<R(ARGS...)> f;
 
-      virtual void* call()
+      virtual ConstructorFunctor::ReturnType operator()() override
       {
-         this->retVal = this->callFunc(/*typename gen_seq2<sizeof...(ARGS)>::type()*/ typename std::index_sequence_for<ARGS...>{});
+         this->retVal = this->callFunc( typename std::index_sequence_for<ARGS...>{});
          return retVal;
       };
 
@@ -41,7 +45,7 @@ namespace fioc
    {
    public:
       //using Map = _Map< std::string, std::function<void*()>, Args ...>;
-      using Map = _Map< std::string, IFunction*, Args ...>;
+      using Map = _Map< std::string, ConstructorFunctor*, Args ...>;
 
       /*template<typename T>
       T* resolve()
@@ -62,11 +66,10 @@ namespace fioc
          {
             return nullptr;
          }
-         MyFunction<T*, Args...> *wtf = static_cast<MyFunction<T*, Args...> *>(it->second);
-         wtf->arguments = std::make_tuple(args...);
-         return static_cast<T*>(it->second->call());
+         FactoryFunctor<T*, Args...> *factoryFunctor = static_cast<FactoryFunctor<T*, Args...> *>(it->second);
+         factoryFunctor->arguments = std::make_tuple(args...);
+         return static_cast<T*>((*it->second)());
 
-         //return static_cast<T*>(static_cast<std::function<void*(Args...)>>(it->second()));
       }
 
       template<typename RegisterType, typename AsType>
@@ -106,9 +109,9 @@ namespace fioc
       template<typename T, typename ...Args>
       void registerType()
       {
-         MyFunction<T*, Args...> *wtf = new MyFunction<T*, Args...>();
-         wtf->f = [](Args... args){ return new T(args...);};
-         container[typeid(T).name()] = wtf;
+         FactoryFunctor<T*, Args...> *factoryFunctor = new FactoryFunctor<T*, Args...>();
+         factoryFunctor->f = [](Args... args){ return new T(args...);};
+         container[typeid(T).name()] = factoryFunctor;
       }
 
    protected:
