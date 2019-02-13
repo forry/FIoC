@@ -32,6 +32,24 @@ public:
    }
 };
 
+class NoDefaultCtor
+{
+public:
+   NoDefaultCtor(int a, int b)
+   : x(a)
+   , y(b)
+   {
+      
+   }
+
+   int get()
+   {
+      return x+y;
+   }
+
+   int x,y;
+};
+
 
 int main(int argc, char* argv[])
 {
@@ -45,14 +63,23 @@ int main(int argc, char* argv[])
       cout << "A not found" << endl;
 
    //builder.registerTypeAs<A,C>();
-   builder.registerType<A>().as<C>();
+   /*builder.registerType<A>().as<C>();
    a.reset(builder.resolve<A>());
    if(a)
       cout << "A " << a->get() << endl;
    else
       cout << "A not found" << endl;
+      */
 
+   builder.registerType<B, int>();
    unique_ptr<B> b((builder.resolve<B>(32)));
-   cout << "B " << b->get() << endl;
+   if(b)
+      cout << "B " << b->get() << endl;
+   else cout << "not b" << endl;
+
+   builder.registerType<NoDefaultCtor, int, int>();
+   unique_ptr<NoDefaultCtor> n(builder.resolve<NoDefaultCtor>(3,7));
+   cout << "NoDef " << n->get() << endl;
+
    return 0;
 }
