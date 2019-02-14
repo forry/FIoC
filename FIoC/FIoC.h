@@ -5,21 +5,15 @@
 
 namespace fioc
 {
-
-   template<typename _ReturnType, typename ...Arguments>
-   class Functor
+   class DefaultConstructorFunctor
    {
    public:
-      using ReturnType = _ReturnType;
-
-      virtual ReturnType operator()(Arguments...args) = 0;
+      virtual void* operator()() = 0;
    };
-
-   using ConstructorFunctor = Functor<void*>;
 
 
    template <typename R, typename ...ARGS>
-   class FactoryFunctor : public ConstructorFunctor
+   class FactoryFunctor : public DefaultConstructorFunctor
    {
    public:
       R retVal;
@@ -27,7 +21,7 @@ namespace fioc
 
       std::function<R(ARGS...)> f;
 
-      virtual ConstructorFunctor::ReturnType operator()() override
+      virtual void* operator()() override
       {
          this->retVal = this->callFunc( typename std::index_sequence_for<ARGS...>{});
          return retVal;
@@ -44,19 +38,7 @@ namespace fioc
    class Builder
    {
    public:
-      //using Map = _Map< std::string, std::function<void*()>, Args ...>;
-      using Map = _Map< std::string, ConstructorFunctor*, Args ...>;
-
-      /*template<typename T>
-      T* resolve()
-      {
-         auto it = container.find(typeid(T).name());
-         if(it == container.end())
-         {
-            return nullptr;
-         }
-         return static_cast<T*>(it->second());
-      }*/
+      using Map = _Map< std::string, DefaultConstructorFunctor*, Args ...>;
 
       template<typename T, typename ... Args >
       T* resolve(Args... args)
@@ -72,46 +54,35 @@ namespace fioc
 
       }
 
-      template<typename RegisterType, typename AsType>
-      void registerTypeAs()
-      {
-         
-         container[typeid(RegisterType).name()] = []() {return new AsType; };
-      }
-
-
-      template<typename T>
+      template<typename T, typename ...Args>
       struct ImmRet
       {
          using type = typename T;
 
          ImmRet(Map &c):container(c){}
 
-         template<typename AS>
+         template<typename As>
          void as()
          {
-            container[typeid(T).name()] = []() {return new AS; };
+            static_assert(std::is_base_of_v<T,As>, "Template type As is not a subclass of T");
+
+            FactoryFunctor<T*, Args...> *factoryFunctor = new FactoryFunctor<T*, Args...>();
+            factoryFunctor->f = [](Args... args) { return new As(args...); };
+            container[typeid(T).name()] = factoryFunctor;
          }
 
+      protected:
          Map& container;
       };
 
-      /*template<typename T>
-      ImmRet<T> registerType()
-      {
-         //update semantic
-
-         container[typeid(T).name()] = []() {return new T; };
-
-         return ImmRet<T>{container};
-      }*/
-
       template<typename T, typename ...Args>
-      void registerType()
+      ImmRet<T, Args...> registerType()
       {
          FactoryFunctor<T*, Args...> *factoryFunctor = new FactoryFunctor<T*, Args...>();
          factoryFunctor->f = [](Args... args){ return new T(args...);};
          container[typeid(T).name()] = factoryFunctor;
+
+         return ImmRet<T, Args...>{container};
       }
 
    protected:
