@@ -3,6 +3,7 @@
 #include <type_traits>
 #include <typeindex>
 #include <functional>
+#include <memory>
 
 namespace fioc
 {
@@ -87,7 +88,8 @@ namespace fioc
    {
    public:
       using Key = std::type_index;
-      using Map = _Map< Key, DefaultConstructorFunctor*, Args ...>; //< The type of internal container (might come in handy)
+      using Value = std::unique_ptr<DefaultConstructorFunctor>;
+      using Map = _Map< Key, Value, Args ...>; //< The type of internal container (might come in handy)
 
 
       /**
@@ -109,7 +111,7 @@ namespace fioc
          {
             return nullptr;
          }
-         FactoryFunctor<T*, Args...> *factoryFunctor = static_cast<FactoryFunctor<T*, Args...> *>(it->second);
+         FactoryFunctor<T*, Args...> *factoryFunctor = static_cast<FactoryFunctor<T*, Args...> *>(it->second.get());
          factoryFunctor->arguments = std::make_tuple(args...);
          return static_cast<T*>((*it->second)());
 
@@ -146,7 +148,8 @@ namespace fioc
 
             FactoryFunctor<T*, Args...> *factoryFunctor = new FactoryFunctor<T*, Args...>();
             factoryFunctor->f = [](Args... args) { return new As(args...); };
-            container[Key{typeid(T)}] = factoryFunctor;
+            //container[Key{typeid(T)}] = factoryFunctor;
+            container.emplace(Key{typeid(T)}, factoryFunctor);
          }
 
       protected:
@@ -165,8 +168,10 @@ namespace fioc
       IntermediateReturn<T, Args...> registerType()
       {
          FactoryFunctor<T*, Args...> *factoryFunctor = new FactoryFunctor<T*, Args...>();
+         
          factoryFunctor->f = [](Args... args){ return new T(args...);};
-         container[Key{typeid(T)}] = factoryFunctor;
+         //container[Key{typeid(T)}] = factoryFunctor;
+         container.emplace(Key{typeid(T)}, factoryFunctor);
 
          return IntermediateReturn<T, Args...>{container};
       }
