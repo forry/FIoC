@@ -148,7 +148,6 @@ namespace fioc
 
             FactoryFunctor<T*, Args...> *factoryFunctor = new FactoryFunctor<T*, Args...>();
             factoryFunctor->f = [](Args... args) { return new As(args...); };
-            //container[Key{typeid(T)}] = factoryFunctor;
             container.emplace(Key{typeid(T)}, factoryFunctor);
          }
 
@@ -170,7 +169,6 @@ namespace fioc
          FactoryFunctor<T*, Args...> *factoryFunctor = new FactoryFunctor<T*, Args...>();
          
          factoryFunctor->f = [](Args... args){ return new T(args...);};
-         //container[Key{typeid(T)}] = factoryFunctor;
          container.emplace(Key{typeid(T)}, factoryFunctor);
 
          return IntermediateReturn<T, Args...>{container};
