@@ -48,6 +48,16 @@ namespace fioc
          return f(std::get<S>(arguments) ...);
       }
    };
+
+   template <typename R, typename ...ARGS>
+   class NullFactory: public FactoryFunctor<R, ARGS...>
+   {
+   public:
+      NullFactory() : FactoryFunctor<R, ARGS...>()
+      {
+         f = [](ARGS... args){return nullptr;};
+      }
+   };
    
    /**
     * IoC container implementation that mimics some of the C# Unity IoC features.
@@ -126,7 +136,7 @@ namespace fioc
        * \tparam T Original type we are mocking.
        * \tparam Args Constructor arguments.
        */
-      template<typename T, typename ...Args>
+      template<typename T>
       struct IntermediateReturn
       {
          using type = typename T;
@@ -142,18 +152,58 @@ namespace fioc
           * \see Builder for example usages.
           */
          template<typename As>
-         void as()
+         IntermediateReturn<std::enable_if_t<std::is_default_constructible_v<As>, T>>& as()
          {
             static_assert(std::is_base_of_v<T,As>, "Template type As is not a subclass of T");
 
+            FactoryFunctor<T*> *factoryFunctor = new FactoryFunctor<T*>();
+            factoryFunctor->f = []() { return new As(); };
+            container.insert_or_assign(Key{typeid(T)}, Value{factoryFunctor});
+
+            return *this;
+         }
+
+         template<typename As>
+         IntermediateReturn<std::enable_if_t<!std::is_default_constructible_v<As>, T>>& as()
+         {
+            static_assert(std::is_base_of_v<T, As>, "Template type As is not a subclass of T");
+
+            NullFactory<T*> *nullFactory = new NullFactory<T*>();
+            container.insert_or_assign(Key{typeid(T)}, Value{nullFactory});
+
+            return *this;
+         }
+
+         template<typename ...Args>
+         void buildWithConstructor()
+         {
             FactoryFunctor<T*, Args...> *factoryFunctor = new FactoryFunctor<T*, Args...>();
-            factoryFunctor->f = [](Args... args) { return new As(args...); };
-            container.emplace(Key{typeid(T)}, factoryFunctor);
+            factoryFunctor->f = [](Args... args) { return new T(args...); };
+            container.insert_or_assign(Key{typeid(T)}, Value{factoryFunctor});
+         }
+
+         template<typename ...Args>
+         void buildWithFactory(std::function<T*(Args...)> f)
+         {
+            FactoryFunctor<T*, Args...> *factoryFunctor = new FactoryFunctor<T*, Args...>();
+            factoryFunctor->f = f;
+            container.insert_or_assign(Key{typeid(T)}, Value{factoryFunctor});
          }
 
       protected:
          Map& container;
       };
+
+      //template <typename T, typename > IntermediateReturn<T> registerType();
+
+      template<typename T>
+      IntermediateReturn<std::enable_if_t<!std::is_default_constructible_v<T>,T>> registerType()
+      {
+         NullFactory<T*> *nullFactory = new NullFactory<T*>();
+         container.emplace(Key{typeid(T)}, nullFactory);
+
+         return IntermediateReturn<T>{container};
+      }
 
       /**
        * Registers the constructor (factory) for type T. It makes a wrapper functor around the constructor
@@ -163,15 +213,15 @@ namespace fioc
        * \tparam Args Arguments of the constructor we want the resolve method to call.
        * \return Used for convenient mocking syntax \see IntermediateReturn.
        */
-      template<typename T, typename ...Args>
-      IntermediateReturn<T, Args...> registerType()
+      template<typename T>
+      IntermediateReturn<std::enable_if_t<std::is_default_constructible_v<T>, T>> registerType()
       {
-         FactoryFunctor<T*, Args...> *factoryFunctor = new FactoryFunctor<T*, Args...>();
+         FactoryFunctor<T*> *factoryFunctor = new FactoryFunctor<T*>();
          
-         factoryFunctor->f = [](Args... args){ return new T(args...);};
+         factoryFunctor->f = [](){ return new T();};
          container.emplace(Key{typeid(T)}, factoryFunctor);
 
-         return IntermediateReturn<T, Args...>{container};
+         return IntermediateReturn<T>{container};
       }
 
    protected:
