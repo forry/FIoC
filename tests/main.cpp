@@ -87,7 +87,7 @@ public:
 int main(int argc, char* argv[])
 {
    
-   fioc::Builder<std::map /*,std::allocator<std::pair<std::string, std::function<void*()> > >*/ > builder;
+   fioc::Registry<std::map /*,std::allocator<std::pair<std::string, std::function<void*()> > >*/ > builder;
    builder.registerType<A>();
    unique_ptr<A> a(builder.resolve<A>());
    if(a)

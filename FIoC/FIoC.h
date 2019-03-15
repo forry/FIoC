@@ -84,7 +84,7 @@ namespace fioc
     * \tparam Args Remaining template arguments the _Map type can have in addition to key and value type.
     */
    template <template <typename ... > class _Map, typename ...Args>
-   class Builder
+   class Registry
    {
    public:
       using Key = std::type_index;
