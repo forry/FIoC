@@ -221,9 +221,6 @@ template<typename Base, typename SyntaxSugar>
 class SocketMixin : public Base, SyntaxSugar
 {};
 
-namespace fioc
-{
-
 template<typename _CommonType, typename T>
 class TemplateAgregatePOC
 {
@@ -241,73 +238,13 @@ public:
 };
 
 
-template <template <typename ... > class _Map, typename _CommonType = void ,typename ...Args>
-class NonRefectiveRegistry
-{
-public:
-   using CommonType = _CommonType;
-   using Key = std::type_index;
-   using Value = std::unique_ptr<DefaultConstructorFunctor>;
-   using Map = _Map< Key, Value, Args ...>; //< The type of internal container (might come in handy)
-
-   template<typename BindType, typename ...Args>
-   CommonType* resolve(Args... args)
-   {
-      auto it = container.find(Key{typeid(BindType)});
-      if(it == container.end())
-      {
-         return nullptr;
-      }
-      FactoryFunctor<CommonType*, Args...> *factoryFunctor = static_cast<FactoryFunctor<CommonType*, Args...> *>(it->second.get());
-      factoryFunctor->arguments = std::make_tuple(args...);
-      return static_cast<CommonType*>((*it->second)());
-   }
-
-   template<typename CreatedType>
-   struct IntermediateReturn
-   {
-      IntermediateReturn(Map& map, std::unique_ptr<FactoryFunctor<CreatedType*>> ff)
-         : container(map)
-      {
-         factoryFunctor = std::move(ff);
-      }
-
-      template<typename BindType>
-      IntermediateReturn<CreatedType>& forType()
-      {
-         container.emplace(Key{typeid(BindType)},std::move(factoryFunctor));
-
-         return *this;
-      }
-
-      Map& container;
-      std::unique_ptr<FactoryFunctor<CreatedType*>> factoryFunctor;
-   };
-
-   template<typename CreatedType>
-   IntermediateReturn<CreatedType> registerType()
-   {
-      std::unique_ptr<FactoryFunctor<CreatedType*>> factoryFunctor{make_unique<FactoryFunctor<CreatedType*>>()};
-
-      factoryFunctor->f = []() { return new CreatedType(); };
-      //container.emplace(Key{typeid(T)}, factoryFunctor);
-
-      return IntermediateReturn<CreatedType>{container, std::move(factoryFunctor)};
-   }
-
-protected:
-   Map container; //< Map is e.g. std::map<std::string, std::function<void*()> >. container holds the factory functions
-};
-}
-
-
 int main(int argc, char* argv[])
 {
+   cout << std::boolalpha;
    ///
    TypeProvider tpr;
    TypeProviderSub1 tps1;
    TypeProvider *t = &tps1;
-   Creator creator;
    std::type_index tid{typeid(*t)};
    cout << MyKey{typeid(B)} << endl;
    cout << "name " << typeid(*t).name() << endl;
@@ -315,7 +252,7 @@ int main(int argc, char* argv[])
    cout << "name " <<typeid(remove_pointer_t<decltype(*t)>).name() << endl;
 
    ///
-   fioc::AgregateUser< fioc::TemplateAgregatePOC<A,B> > agrPOC;
+   AgregateUser<TemplateAgregatePOC<A,B> > agrPOC;
    cout << "Agregate " << typeid(decltype(agrPOC)::CT).name() << " " << typeid(decltype(agrPOC)::T).name() << endl;
    ///
    //Increment i(0);
@@ -331,20 +268,33 @@ int main(int argc, char* argv[])
 
    fioc::NonRefectiveRegistry<std::map> nrBuilder;
    nrBuilder.registerType<C>().forType<B>();
-   nrBuilder.registerType<D>().forType<A>();
+   nrBuilder.registerType<NoDefaultCtor>().forType<A>();
    unique_ptr<A> nrResolved (static_cast<A*>(nrBuilder.resolve<B>()));
 
    cout << "nrresolve " << nrResolved->get() << endl;
+
 
    //nrResolved.reset( nrBuilder.resolve<A>());
 
    //cout << "nrresolve " << nrResolved->get() << endl; //runtime access violation as expected
 
    unique_ptr<D> nrr(static_cast<D*>(nrBuilder.resolve<A>()));
-   cout << "nrresolve " << nrr->get() << endl;
+   if(nrr)
+      cout << "nrresolve " << nrr->get() << endl;
+   else
+      cout << "nrr is null" << endl;
+
+   nrBuilder.registerType<NoDefaultCtor>().withConstructor<int, int>().forType<A>();
+   unique_ptr<NoDefaultCtor> nr2(static_cast<NoDefaultCtor*>(nrBuilder.resolve<A>(1, 1)));
+   cout << "nr2 " << (nr2->get() == 2) << endl;
+
+   nrBuilder.registerType<NoDefaultCtorSub>().buildWithFactory({Factory::create}).forType<A>();
+   unique_ptr<NoDefaultCtorSub> nr3(static_cast<NoDefaultCtorSub*>(nrBuilder.resolve<A>()));
+   cout << "nr3 " << nr3->get() << " " << (nr3->get() == 11) << endl;
+
    /////////////////////////////
    
-   fioc::Registry<std::map /*,std::allocator<std::pair<std::string, std::function<void*()> > >*/ > builder;
+   fioc::Registry<std::map> builder;
    builder.registerType<A>();
    builder.registerType<A>();
    unique_ptr<A> a(builder.resolve<A>());
