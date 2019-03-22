@@ -1,64 +1,9 @@
 #pragma once
 
-#include <type_traits>
-#include <typeindex>
-#include <functional>
-#include <memory>
+#include <FIoC/commons.h>
 
 namespace fioc
 {
-
-
-   /**
-    * Pure abstract interface for default constructor call.
-    */
-   class DefaultConstructorFunctor
-   {
-   public:
-      virtual void* operator()() = 0;
-   };
-
-
-   /**
-    * This is general function call wrapper.
-    * This allows you to call the function you don't know nothing about (return value, arguments) until the compile time.
-    * It gives us the possibility to call an arbitrary constructor on the registered type.
-    *
-    * \tparam R Return type.
-    * \tparam ARGS Call arguments.
-    */
-   template <typename R, typename ...ARGS>
-   class FactoryFunctor : public DefaultConstructorFunctor
-   {
-   public:
-      R retVal;
-      std::tuple<ARGS...> arguments;
-
-      std::function<R(ARGS...)> f;
-
-      virtual void* operator()() override
-      {
-         this->retVal = this->callFunc(typename std::index_sequence_for<ARGS...>{});
-         return retVal;
-      };
-
-      template<int ...S>
-      R callFunc(std::index_sequence<S...>)
-      {
-         return f(std::get<S>(arguments) ...);
-      }
-   };
-
-   template <typename R, typename ...ARGS>
-   class NullFactory : public FactoryFunctor<R, ARGS...>
-   {
-   public:
-      NullFactory() : FactoryFunctor<R, ARGS...>()
-      {
-         f = [](ARGS... args) {return nullptr; };
-      }
-   };
-
    /**
     * IoC container implementation that mimics some of the C# Unity IoC features.
     * It supports mocking and types that are not default-constructible.
@@ -152,26 +97,23 @@ namespace fioc
           * \see Builder for example usages.
           */
          template<typename As>
-         IntermediateReturn<std::enable_if_t<std::is_default_constructible_v<As>, T>>&
-            as()
+         IntermediateReturn<T> as()
          {
             static_assert(std::is_base_of_v<T, As>, "Template type As is not a subclass of T");
 
-            FactoryFunctor<T*> *factoryFunctor = new FactoryFunctor<T*>();
-            factoryFunctor->f = []() { return new As(); };
+            FactoryFunctor<T*> *factoryFunctor;
+
+            if constexpr(std::is_default_constructible_v<As>)
+            {
+               factoryFunctor = new FactoryFunctor<T*>();
+               factoryFunctor->f = []() { return new As(); };
+            }
+            else
+            {
+               factoryFunctor = new NullFactory<T*>();
+            }
+
             container.insert_or_assign(Key{typeid(T)}, Value{factoryFunctor});
-
-            return *this;
-         }
-
-         template<typename As>
-         IntermediateReturn<std::enable_if_t<!std::is_default_constructible_v<As>, T>>&
-            as()
-         {
-            static_assert(std::is_base_of_v<T, As>, "Template type As is not a subclass of T");
-
-            NullFactory<T*> *nullFactory = new NullFactory<T*>();
-            container.insert_or_assign(Key{typeid(T)}, Value{nullFactory});
 
             return *this;
          }
@@ -196,18 +138,6 @@ namespace fioc
          Map& container;
       };
 
-      //template <typename T, typename > IntermediateReturn<T> registerType();
-
-      template<typename T>
-      IntermediateReturn<std::enable_if_t<!std::is_default_constructible_v<T>, T>>
-         registerType()
-      {
-         NullFactory<T*> *nullFactory = new NullFactory<T*>();
-         container.emplace(Key{typeid(T)}, nullFactory);
-
-         return IntermediateReturn<T>{container};
-      }
-
       /**
        * Registers the constructor (factory) for type T. It makes a wrapper functor around the constructor
        * that is resolved by giving the Args template arguments. Default constructor is used when the Args pack is empty.
@@ -217,14 +147,21 @@ namespace fioc
        * \return Used for convenient mocking syntax \see IntermediateReturn.
        */
       template<typename T>
-      IntermediateReturn<std::enable_if_t<std::is_default_constructible_v<T>, T>>
-         registerType()
+      IntermediateReturn<T> registerType()
       {
-         FactoryFunctor<T*> *factoryFunctor = new FactoryFunctor<T*>();
+         FactoryFunctor<T*> *factoryFunctor;
 
-         factoryFunctor->f = []() { return new T(); };
-         container.emplace(Key{typeid(T)}, factoryFunctor);
+         if constexpr(std::is_default_constructible_v<T>)
+         {
+            factoryFunctor = new FactoryFunctor<T*>();
+            factoryFunctor->f = []() { return new T(); };
+         }
+         else
+         {
+            factoryFunctor = new NullFactory<T*>();
+         }
 
+         container.insert_or_assign(Key{typeid(T)}, Value{factoryFunctor});
          return IntermediateReturn<T>{container};
       }
 
