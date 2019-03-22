@@ -1,9 +1,6 @@
 #pragma once
 
-#include <type_traits>
-#include <typeindex>
-#include <functional>
-#include <memory>
+#include <FIoC/commons.h>
 
 namespace fioc
 {

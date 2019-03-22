@@ -20,6 +20,7 @@ set(TESTS_PATH "tests")
 
 set(${PROJECT_NAME}_HEADERS
    ${${PROJECT_NAME}_PATH}/FIoC.h
+   ${${PROJECT_NAME}_PATH}/commons.h
    ${${PROJECT_NAME}_PATH}/NRRegistry.h   
    ${${PROJECT_NAME}_PATH}/Registry.h
 )
