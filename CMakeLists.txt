@@ -5,6 +5,8 @@ project("FIoC"
          DESCRIPTION "Lightweight C++ IoC implementation"
 )
 
+set(CMAKE_CXX_STANDARD 17)
+
 IF (TARGET ${PROJECT_NAME})
     return()
 ENDIF (TARGET ${PROJECT_NAME})

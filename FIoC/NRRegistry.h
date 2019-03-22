@@ -47,7 +47,6 @@ namespace fioc
          template<typename...Args>
          IntermediateReturn<CreatedType, Args...> withConstructor()
          {
-            //FactoryFunctor<CreatedType*, Args...> *factoryFunctor = new FactoryFunctor<CreatedType*, Args...>();
             std::unique_ptr<FactoryFunctor<CreatedType*, Args...>> factoryFunctor = std::make_unique<FactoryFunctor<CreatedType*, Args...>>();
             factoryFunctor->f = [](Args... args) { return new CreatedType(args...); };
 
@@ -70,21 +69,19 @@ namespace fioc
       };
 
       template<typename CreatedType>
-      IntermediateReturn<std::enable_if_t<std::is_default_constructible_v<CreatedType>, CreatedType>>
-         registerType()
+      IntermediateReturn<CreatedType> registerType()
       {
-         std::unique_ptr<FactoryFunctor<CreatedType*>> factoryFunctor{make_unique<FactoryFunctor<CreatedType*>>()};
+         std::unique_ptr<FactoryFunctor<CreatedType*>> factoryFunctor;
 
-         factoryFunctor->f = []() { return new CreatedType(); };
-
-         return IntermediateReturn<CreatedType>{container, std::move(factoryFunctor)};
-      }
-
-      template<typename CreatedType>
-      IntermediateReturn<std::enable_if_t<!std::is_default_constructible_v<CreatedType>, CreatedType>>
-         registerType()
-      {
-         std::unique_ptr<FactoryFunctor<CreatedType*>> factoryFunctor{make_unique<NullFactory<CreatedType*>>()};
+         if constexpr(std::is_default_constructible_v<CreatedType>)
+         {
+            factoryFunctor = make_unique<FactoryFunctor<CreatedType*>>();
+            factoryFunctor->f = []() { return new CreatedType(); };
+         }
+         else
+         {
+            factoryFunctor = make_unique<NullFactory<CreatedType*>>();
+         }
 
          return IntermediateReturn<CreatedType>{container, std::move(factoryFunctor)};
       }

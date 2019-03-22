@@ -217,10 +217,6 @@ public:
   //Selector& createPDMforProduct = create; //name alias
 };
 
-template<typename Base, typename SyntaxSugar>
-class SocketMixin : public Base, SyntaxSugar
-{};
-
 template<typename _CommonType, typename T>
 class TemplateAgregatePOC
 {
@@ -237,6 +233,41 @@ public:
    typedef typename Agregate::Type T;
 };
 
+class Calls
+{
+   class ReturnType
+   {
+   public:
+      constexpr ReturnType()
+      {}
+
+      ReturnType& b()
+      {
+         state.b++;
+         return *this;
+      }
+
+      ~ReturnType()
+      {
+         if(state.b != 1)
+         {
+            //report error
+            cout << "inconsistent Calls state" << endl;
+         }
+      }
+   protected:
+      struct State
+      {
+         unsigned b = 0;
+      } state;
+
+   };
+public:
+   ReturnType a()
+   {
+      return ReturnType{};
+   }
+};
 
 int main(int argc, char* argv[])
 {
@@ -258,8 +289,10 @@ int main(int argc, char* argv[])
    //Increment i(0);
    cout << "increment " << Increment()()()()()() << endl;
    ///
-
+   Calls calls;
+   calls.a().b();
    ///
+
    /*PDMRegistry.registerPDM<PDM>().forProduct<Product>();
    PDMRegistry.createPDMforProduct[product*](product*,viewer*);*/
    ///
