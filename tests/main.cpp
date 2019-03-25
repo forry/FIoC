@@ -269,6 +269,8 @@ public:
    }
 };
 
+
+
 int main(int argc, char* argv[])
 {
    cout << std::boolalpha;
@@ -276,7 +278,6 @@ int main(int argc, char* argv[])
    TypeProvider tpr;
    TypeProviderSub1 tps1;
    TypeProvider *t = &tps1;
-   std::type_index tid{typeid(*t)};
    cout << MyKey{typeid(B)} << endl;
    cout << "name " << typeid(*t).name() << endl;
    //cout << "name " << decltype(t) << endl;
@@ -306,9 +307,28 @@ int main(int argc, char* argv[])
 
    cout << "nrresolve " << nrResolved->get() << endl;
 
+   B bb;
+   unique_ptr<A> nrbi(static_cast<A*>(nrBuilder.resolveByInstance(&bb)));
+   cout << "nrbi " << nrbi->get() << endl;
+
+
+   nrBuilder.registerType<NoDefaultCtor>().withConstructor<int, int>().forType<A>();
+   unique_ptr<NoDefaultCtor> nr2(static_cast<NoDefaultCtor*>(nrBuilder.resolve<A>(1, 1)));
+   cout << "nr2 " << (nr2->get() == 2) << endl;
+
+   nrBuilder.registerType<D>().forType<C>();
+   unique_ptr<A> ac(make_unique<C>());
+   unique_ptr<A> aa(make_unique<A>());
+   unique_ptr<NoDefaultCtor> nrbi3(static_cast<NoDefaultCtor*>(nrBuilder.resolveByInstance(aa.get())));
+   if(!nrbi3)
+      cout << "nrbi is null as it should be " << endl;
+   else
+      cout << "some other type than expected " << nrbi3->get() << endl;
+
+   unique_ptr<D> nrbi2(static_cast<D*>(nrBuilder.resolveByInstance(ac.get())));
+   cout << "nrbi " << nrbi2->get() << endl;
 
    //nrResolved.reset( nrBuilder.resolve<A>());
-
    //cout << "nrresolve " << nrResolved->get() << endl; //runtime access violation as expected
 
    unique_ptr<D> nrr(static_cast<D*>(nrBuilder.resolve<A>()));
@@ -317,13 +337,12 @@ int main(int argc, char* argv[])
    else
       cout << "nrr is null" << endl;
 
-   nrBuilder.registerType<NoDefaultCtor>().withConstructor<int, int>().forType<A>();
-   unique_ptr<NoDefaultCtor> nr2(static_cast<NoDefaultCtor*>(nrBuilder.resolve<A>(1, 1)));
-   cout << "nr2 " << (nr2->get() == 2) << endl;
 
    nrBuilder.registerType<NoDefaultCtorSub>().buildWithFactory({Factory::create}).forType<A>();
    unique_ptr<NoDefaultCtorSub> nr3(static_cast<NoDefaultCtorSub*>(nrBuilder.resolve<A>()));
    cout << "nr3 " << nr3->get() << " " << (nr3->get() == 11) << endl;
+
+   
 
    /////////////////////////////
    
