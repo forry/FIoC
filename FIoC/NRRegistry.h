@@ -26,6 +26,20 @@ namespace fioc
          return static_cast<CommonType*>((*it->second)());
       }
 
+      template<typename T, typename ...Args>
+      CommonType* resolveByInstance(T* instance, Args...args)
+      {
+         Key key{typeid(*instance)};
+         auto it = container.find(key);
+         if(it == container.end())
+         {
+            return nullptr;
+         }
+         FactoryFunctor<CommonType*, Args...> *factoryFunctor = static_cast<FactoryFunctor<CommonType*, Args...> *>(it->second.get());
+         factoryFunctor->arguments = std::make_tuple(args...);
+         return static_cast<CommonType*>((*it->second)());
+      }
+
       template<typename CreatedType, typename...Args>
       struct IntermediateReturn
       {
