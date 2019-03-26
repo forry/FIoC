@@ -312,7 +312,7 @@ int main(int argc, char* argv[])
    cout << "nrbi " << nrbi->get() << endl;
 
 
-   nrBuilder.registerType<NoDefaultCtor>().withConstructor<int, int>().forType<A>();
+   nrBuilder.registerType<NoDefaultCtor>().buildWithConstructor<int, int>().forType<A>();
    unique_ptr<NoDefaultCtor> nr2(static_cast<NoDefaultCtor*>(nrBuilder.resolve<A>(1, 1)));
    cout << "nr2 " << (nr2->get() == 2) << endl;
 
@@ -341,6 +341,10 @@ int main(int argc, char* argv[])
    nrBuilder.registerType<NoDefaultCtorSub>().buildWithFactory({Factory::create}).forType<A>();
    unique_ptr<NoDefaultCtorSub> nr3(static_cast<NoDefaultCtorSub*>(nrBuilder.resolve<A>()));
    cout << "nr3 " << nr3->get() << " " << (nr3->get() == 11) << endl;
+
+   nrBuilder.registerType<NoDefaultCtorSub>().buildWithFactory({[](){ return new NoDefaultCtorSub(3,6);}}).forType<A>();
+   unique_ptr<NoDefaultCtorSub> nr4(static_cast<NoDefaultCtorSub*>(nrBuilder.resolve<A>()));
+   cout << "nr4 " << nr4->get() << " " << (nr4->get() == 9) << endl;
 
    
 

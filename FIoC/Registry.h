@@ -2,6 +2,9 @@
 
 #include <FIoC/commons.h>
 
+#include <typeindex>
+#include <memory>
+
 namespace fioc
 {
    /**
@@ -79,7 +82,6 @@ namespace fioc
        * for the later resolution (mocking).
        *
        * \tparam T Original type we are mocking.
-       * \tparam Args Constructor arguments.
        */
       template<typename T>
       struct IntermediateReturn
@@ -90,7 +92,7 @@ namespace fioc
 
          /**
           * Replaces the constructor functor of type T with the constructor functor of type As. It is intended to
-          * chain this call to the registerType call.
+          * chain this call to the registerType call. Provides mocking functionality.
           *
           * \tparam As New type we construct when asked for type T. The type As has to be the same or subclass of T.
           *
@@ -139,12 +141,13 @@ namespace fioc
       };
 
       /**
-       * Registers the constructor (factory) for type T. It makes a wrapper functor around the constructor
-       * that is resolved by giving the Args template arguments. Default constructor is used when the Args pack is empty.
+       * Registers the constructor (factory) for type T with default constructor or factory that resolves to nullptr when the T is not default constructible.
+       * When in need of a different constructor or a custom factory to be used chain this with the other calls.
        *
        * \tparam T Type to register.
-       * \tparam Args Arguments of the constructor we want the resolve method to call.
        * \return Used for convenient mocking syntax \see IntermediateReturn.
+       * 
+       * \see Registry usage examples.
        */
       template<typename T>
       IntermediateReturn<T> registerType()
