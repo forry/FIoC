@@ -1,9 +1,7 @@
 #pragma once
 
 #include <type_traits>
-#include <typeindex>
 #include <functional>
-#include <memory>
 
 namespace fioc
 {
