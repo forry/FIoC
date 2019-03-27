@@ -70,7 +70,7 @@ public:
 
    int get()
    {
-      return x + y;
+      return x - y;
    }
 
 };
@@ -300,7 +300,7 @@ int main(int argc, char* argv[])
 
 
 
-   fioc::NonRefectiveRegistry<std::map> nrBuilder;
+   fioc::TBRegistry<std::map> nrBuilder;
    nrBuilder.registerType<C>().forType<B>();
    nrBuilder.registerType<NoDefaultCtor>().forType<A>();
    unique_ptr<A> nrResolved (static_cast<A*>(nrBuilder.resolve<B>()));
@@ -340,11 +340,11 @@ int main(int argc, char* argv[])
 
    nrBuilder.registerType<NoDefaultCtorSub>().buildWithFactory({Factory::create}).forType<A>();
    unique_ptr<NoDefaultCtorSub> nr3(static_cast<NoDefaultCtorSub*>(nrBuilder.resolve<A>()));
-   cout << "nr3 " << nr3->get() << " " << (nr3->get() == 11) << endl;
+   cout << "nr3 " << nr3->get() << " " << (nr3->get() == -1) << endl;
 
    nrBuilder.registerType<NoDefaultCtorSub>().buildWithFactory({[](){ return new NoDefaultCtorSub(3,6);}}).forType<A>();
    unique_ptr<NoDefaultCtorSub> nr4(static_cast<NoDefaultCtorSub*>(nrBuilder.resolve<A>()));
-   cout << "nr4 " << nr4->get() << " " << (nr4->get() == 9) << endl;
+   cout << "nr4 " << nr4->get() << " " << (nr4->get() == -3) << endl;
 
    
 
