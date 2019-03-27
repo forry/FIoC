@@ -14,8 +14,8 @@ namespace fioc
     * 
     * Constructing simple container
     * \code{.cpp}
-    * fioc::NonRefectiveRegistry<std::map> builder;
-    * fioc::NonRefectiveRegistry<std::map, AbstractClass> builder2; //builder for the AbstractClass type objects
+    * fioc::TBRegistry<std::map> builder;
+    * fioc::TBRegistry<std::map, AbstractClass> builder2; //builder for the AbstractClass type objects
     * \endcode
     * 
     * Registering simple default constructible, we register Type A for type B (B is a 'key' type in this example)
@@ -55,7 +55,7 @@ namespace fioc
     * \tparam _CommonType The type that should be returned by the resolve function. If not supplied the default is void*.
     */
    template <template <typename ... > class _Map, typename _CommonType = void, typename ...Args>
-   class NonRefectiveRegistry
+   class TBRegistry
    {
    public:
       using CommonType = _CommonType;
