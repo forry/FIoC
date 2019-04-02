@@ -269,6 +269,15 @@ public:
    }
 };
 
+class UniquePtrFactory
+{
+public:
+   static unique_ptr<A> create()
+   {
+      return make_unique<C>();
+   }
+};
+
 
 
 int main(int argc, char* argv[])
@@ -298,15 +307,20 @@ int main(int argc, char* argv[])
    PDMRegistry.createPDMforProduct[product*](product*,viewer*);*/
    ///
 
+   unique_ptr<A> una(UniquePtrFactory::create());
 
+   cout << "unique factory una " << una->get() << " " << (una->get() == 2) << endl;
+
+   ///
 
    fioc::TBRegistry<std::map> nrBuilder;
    nrBuilder.registerType<C>().forType<B>();
-   nrBuilder.registerType<NoDefaultCtor>().forType<A>();
-   unique_ptr<A> nrResolved (static_cast<A*>(nrBuilder.resolve<B>()));
-
-   cout << "nrresolve " << nrResolved->get() << endl;
-
+   //nrBuilder.registerType<NoDefaultCtor>().forType<A>();
+   //unique_ptr<A> nrResolved( static_pointer_cast<A>(nrBuilder.resolve<B>()) );
+   unique_ptr<A, fioc::CustomDeleter<void>> nr(static_cast<A*>(nrBuilder.resolve<B>().release()));
+   //unique_ptr<A> nrResolved = static_pointer_cast<A>(std::move(nr));
+   cout << "nrresolve " << nr->get() << endl;
+   /*
    B bb;
    unique_ptr<A> nrbi(static_cast<A*>(nrBuilder.resolveByInstance(&bb)));
    cout << "nrbi " << nrbi->get() << endl;
@@ -345,7 +359,7 @@ int main(int argc, char* argv[])
    nrBuilder.registerType<NoDefaultCtorSub>().buildWithFactory({[](){ return new NoDefaultCtorSub(3,6);}}).forType<A>();
    unique_ptr<NoDefaultCtorSub> nr4(static_cast<NoDefaultCtorSub*>(nrBuilder.resolve<A>()));
    cout << "nr4 " << nr4->get() << " " << (nr4->get() == -3) << endl;
-
+   */
    
 
    /////////////////////////////

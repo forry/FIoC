@@ -14,6 +14,15 @@ namespace fioc
       virtual void* operator()() = 0;
    };
 
+   template<typename _Ptr>
+   struct CustomDeleter
+   {
+      void operator()(_Ptr* ptr)
+      {
+         delete ptr;
+      }
+   };
+
 
    /**
     * This is general function call wrapper.

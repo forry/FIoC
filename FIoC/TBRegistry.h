@@ -24,7 +24,7 @@ namespace fioc
     * A* a = (A*)builder.resolve<B>(); //returns new object of type A but casted as void*
     * 
     * builder2.registerType<A>().forType<B>(); // A should be now the subclass of AbstractClass
-    * AbstractClass *subclass = builder.resolve<B>();    * 
+    * AbstractClass *subclass = builder.resolve<B>();
     * \endcode
     * 
     * Register type A for type B but with different constructor or a factory
@@ -43,7 +43,7 @@ namespace fioc
     * \code{.cpp}
     * SuperClassOfB *b = new B;
     * builder.registerType<A>().buildWithFactory<int>({[](int val){return new A(val + 4)}}).forType<B>();
-    * A* a = (A*)builder.resolveByInstance(b, 4);    * 
+    * A* a = (A*)builder.resolveByInstance(b, 4);
     * \endcode
     * 
     * There has to be a certain order of the calls int the chains otherwise the item don't get registered or the resolve could return nullptr or
@@ -62,9 +62,18 @@ namespace fioc
       using Key = std::type_index;
       using Value = std::unique_ptr<DefaultConstructorFunctor>;
       using Map = _Map< Key, Value, Args ...>; //< The type of internal container (might come in handy)
+      
 
+      /**
+       * Creates Object of the type that was binded for type BindType. If no object was bound to that type it returns nullptr.
+       * 
+       * \tparam BindType The "key" type.
+       * \tparam Args Argument types for the constructor of a factory function that was registered with BindType.
+       * \param args Arguments for the factory/ctor.
+       * \return The pointer to a newly created object (and its ownership) casted as CommonType*.
+       */
       template<typename BindType, typename ...Args>
-      CommonType* resolve(Args... args)
+      std::unique_ptr<CommonType, CustomDeleter<CommonType>> resolve(Args... args)
       {
          auto it = container.find(Key{typeid(BindType)});
          if(it == container.end())
@@ -73,9 +82,22 @@ namespace fioc
          }
          FactoryFunctor<CommonType*, Args...> *factoryFunctor = static_cast<FactoryFunctor<CommonType*, Args...> *>(it->second.get());
          factoryFunctor->arguments = std::make_tuple(args...);
-         return static_cast<CommonType*>((*it->second)());
+         //return static_cast<CommonType*>((*it->second)());
+         return std::unique_ptr<CommonType, CustomDeleter<CommonType>>((*it->second)());
       }
 
+      /**
+       * This function is a modification of the resolve(). It adds the possibility to get the BindType ("key" type) from the pointer to an existing object.
+       * it applies the typeid operator to instance so its type can be a pointer to a super class. This is for the use-case when you have e.g. a collection of
+       * pointers to interfaces of types that are registered and you want to created the object of the bound types without knowing exactly which types the pointers
+       * in collection are referring to.
+       * 
+       * \tparam T Superclass of some "key" type.
+       * \tparam Args Types of arguments for the registered ctor/factory.
+       * \param instance Pointer to an existing instance of some registered "key" type.
+       * \param args Arguments for the registered ctor/factory.
+       * \return Returns the newly created object (and its ownership) for the bound type cast as CommonType*.
+       */
       template<typename T, typename ...Args>
       CommonType* resolveByInstance(T* instance, Args...args)
       {
@@ -99,12 +121,26 @@ namespace fioc
             factoryFunctor = std::move(ff);
          }
 
-         template<typename BindType>
+         /**
+          * Last function of the register chain which states the "key" type we are registering the bound type to.
+          * \tparam KeyType Type for which we are registering the associated bound type.
+          * 
+          * \see TBRegistry for example usage.
+          */
+         template<typename KeyType>
          void forType()
          {
-            container.insert_or_assign(Key{typeid(BindType)}, std::move(factoryFunctor));
+            container.insert_or_assign(Key{typeid(KeyType)}, std::move(factoryFunctor));
          }
 
+         /**
+          * This configures the bound type to be constructed with constructor with the signature given by the template Args.
+          * 
+          * \tparam Args This pack is used to select the constructor of the bound type.
+          * \return Returns the object for the chain continuation.
+          * 
+          * \see TBRegistry for example usage.
+          */
          template<typename...Args>
          IntermediateReturn<CreatedType, Args...> buildWithConstructor()
          {
@@ -114,6 +150,13 @@ namespace fioc
             return IntermediateReturn<CreatedType, Args...>(container, std::move(factoryFunctor));
          }
 
+         /**
+          * This configures the bound type to be constructed with factory with the signature given by the template Args.
+          * 
+          * \tparam Args Signature of the factory function.
+          * \param f The factory function used to create the object of the bound type. The argument is a std::function which implies many possible uses.
+          * \return Returns the object for the chain continuation.
+          */
          template<typename ...Args>
          IntermediateReturn<CreatedType, Args...> buildWithFactory(std::function<CreatedType*(Args...)> f)
          {
@@ -129,22 +172,32 @@ namespace fioc
          std::unique_ptr<FactoryFunctor<CreatedType*, Args...>> factoryFunctor;
       };
 
-      template<typename CreatedType>
-      IntermediateReturn<CreatedType> registerType()
+      /**
+       * Begins the function chain for registering a BoundType to a 'key' type. If this call is not continued by
+       * buildWith* method the default constructor is assumed. Then if the BoundType doesn't have the default constructor
+       * the NullFactory is supplied resulting in the resolve call always returning null object. Note that unless the chain is ended
+       * with forType() method the registration is NOT complete a nd NOTHING gets registered. The ongoing configuration is
+       * passes by the return of the chain.
+       * 
+       * \tparam BoundType Type of the object that is desired to be constructed via a resolve call later.
+       * \return Returns the object for the chain continuation.
+       */
+      template<typename BoundType>
+      IntermediateReturn<BoundType> registerType()
       {
-         std::unique_ptr<FactoryFunctor<CreatedType*>> factoryFunctor;
+         std::unique_ptr<FactoryFunctor<BoundType*>> factoryFunctor;
 
-         if constexpr(std::is_default_constructible_v<CreatedType>)
+         if constexpr(std::is_default_constructible_v<BoundType>)
          {
-            factoryFunctor = make_unique<FactoryFunctor<CreatedType*>>();
-            factoryFunctor->f = []() { return new CreatedType(); };
+            factoryFunctor = make_unique<FactoryFunctor<BoundType*>>();
+            factoryFunctor->f = []() { return new BoundType(); };
          }
          else
          {
-            factoryFunctor = make_unique<NullFactory<CreatedType*>>();
+            factoryFunctor = make_unique<NullFactory<BoundType*>>();
          }
 
-         return IntermediateReturn<CreatedType>{container, std::move(factoryFunctor)};
+         return IntermediateReturn<BoundType>{container, std::move(factoryFunctor)};
       }
 
 
