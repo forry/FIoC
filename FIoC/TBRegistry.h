@@ -72,8 +72,8 @@ namespace fioc
        * \param args Arguments for the factory/ctor.
        * \return The pointer to a newly created object (and its ownership) casted as CommonType*.
        */
-      template<typename BindType, typename ...Args>
-      std::unique_ptr<CommonType, CustomDeleter<CommonType>> resolve(Args... args)
+      template<typename BindType, typename  CommonType_ = CommonType, typename ...Args>
+      std::enable_if_t<!is_unique_ptr_v<CommonType>, CommonType_*> resolve(Args... args)
       {
          auto it = container.find(Key{typeid(BindType)});
          if(it == container.end())
@@ -82,8 +82,23 @@ namespace fioc
          }
          FactoryFunctor<CommonType*, Args...> *factoryFunctor = static_cast<FactoryFunctor<CommonType*, Args...> *>(it->second.get());
          factoryFunctor->arguments = std::make_tuple(args...);
-         //return static_cast<CommonType*>((*it->second)());
-         return std::unique_ptr<CommonType, CustomDeleter<CommonType>>((*it->second)());
+
+         return static_cast<CommonType*>((*it->second)());
+
+      }
+
+      template<typename BindType, typename  CommonType_ = CommonType, typename ...Args>
+      std::enable_if_t<is_unique_ptr_v<CommonType>, CommonType_> resolve(Args... args)
+      {
+         auto it = container.find(Key{typeid(BindType)});
+         if(it == container.end())
+         {
+            return nullptr;
+         }
+         FactoryFunctor<CommonType*, Args...> *factoryFunctor = static_cast<FactoryFunctor<CommonType*, Args...> *>(it->second.get());
+         factoryFunctor->arguments = std::make_tuple(args...);
+         
+         return CommonType((*it->second)());
       }
 
       /**

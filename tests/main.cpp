@@ -317,7 +317,7 @@ int main(int argc, char* argv[])
    nrBuilder.registerType<C>().forType<B>();
    //nrBuilder.registerType<NoDefaultCtor>().forType<A>();
    //unique_ptr<A> nrResolved( static_pointer_cast<A>(nrBuilder.resolve<B>()) );
-   unique_ptr<A, fioc::CustomDeleter<void>> nr(static_cast<A*>(nrBuilder.resolve<B>().release()));
+   unique_ptr<A> nr(static_cast<A*>(nrBuilder.resolve<B>()));
    //unique_ptr<A> nrResolved = static_pointer_cast<A>(std::move(nr));
    cout << "nrresolve " << nr->get() << endl;
    /*
