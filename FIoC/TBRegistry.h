@@ -95,10 +95,10 @@ namespace fioc
          {
             return nullptr;
          }
-         FactoryFunctor<CommonType*, Args...> *factoryFunctor = static_cast<FactoryFunctor<CommonType*, Args...> *>(it->second.get());
+         FactoryFunctor<CommonType::pointer, Args...> *factoryFunctor = static_cast<FactoryFunctor<CommonType::pointer, Args...> *>(it->second.get());
          factoryFunctor->arguments = std::make_tuple(args...);
          
-         return CommonType((*it->second)());
+         return CommonType(static_cast<CommonType::pointer>((*factoryFunctor)()));
       }
 
       /**
@@ -113,8 +113,8 @@ namespace fioc
        * \param args Arguments for the registered ctor/factory.
        * \return Returns the newly created object (and its ownership) for the bound type cast as CommonType*.
        */
-      template<typename T, typename ...Args>
-      CommonType* resolveByInstance(T* instance, Args...args)
+      template<typename T, typename  CommonType_ = CommonType, typename ...Args>
+      std::enable_if_t<!is_unique_ptr_v<CommonType>, CommonType_*> resolveByInstance(T* instance, Args...args)
       {
          Key key{typeid(*instance)};
          auto it = container.find(key);
@@ -125,6 +125,20 @@ namespace fioc
          FactoryFunctor<CommonType*, Args...> *factoryFunctor = static_cast<FactoryFunctor<CommonType*, Args...> *>(it->second.get());
          factoryFunctor->arguments = std::make_tuple(args...);
          return static_cast<CommonType*>((*it->second)());
+      }
+
+      template<typename T, typename  CommonType_ = CommonType, typename ...Args>
+      std::enable_if_t<is_unique_ptr_v<CommonType>, CommonType_> resolveByInstance(T* instance, Args...args)
+      {
+         Key key{typeid(*instance)};
+         auto it = container.find(key);
+         if(it == container.end())
+         {
+            return nullptr;
+         }
+         FactoryFunctor<CommonType::pointer, Args...> *factoryFunctor = static_cast<FactoryFunctor<CommonType::pointer, Args...> *>(it->second.get());
+         factoryFunctor->arguments = std::make_tuple(args...);
+         return CommonType(static_cast<CommonType::pointer>((*factoryFunctor)()));
       }
 
       template<typename CreatedType, typename...Args>

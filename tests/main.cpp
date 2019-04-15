@@ -315,42 +315,19 @@ int main(int argc, char* argv[])
 
    fioc::TBRegistry<std::map> nrBuilder;
    nrBuilder.registerType<C>().forType<B>();
-   //nrBuilder.registerType<NoDefaultCtor>().forType<A>();
-   //unique_ptr<A> nrResolved( static_pointer_cast<A>(nrBuilder.resolve<B>()) );
    unique_ptr<A> nr(static_cast<A*>(nrBuilder.resolve<B>()));
-   //unique_ptr<A> nrResolved = static_pointer_cast<A>(std::move(nr));
-   cout << "nrresolve " << nr->get() << endl;
-   /*
-   B bb;
-   unique_ptr<A> nrbi(static_cast<A*>(nrBuilder.resolveByInstance(&bb)));
-   cout << "nrbi " << nrbi->get() << endl;
+   cout << "nrresolve " << nr->get() << " " << (nr->get() == 2) << endl;
+   
+   nrBuilder.registerType<B>().forType<C>();
+   C c;
+   A* cp = &c;
+   unique_ptr<B> nrbi(static_cast<B*>(nrBuilder.resolveByInstance(cp)));
+   cout << "nrbi " << nrbi->get() << " " << (nrbi->get() == 0) << endl;
 
 
    nrBuilder.registerType<NoDefaultCtor>().buildWithConstructor<int, int>().forType<A>();
    unique_ptr<NoDefaultCtor> nr2(static_cast<NoDefaultCtor*>(nrBuilder.resolve<A>(1, 1)));
    cout << "nr2 " << (nr2->get() == 2) << endl;
-
-   nrBuilder.registerType<D>().forType<C>();
-   unique_ptr<A> ac(make_unique<C>());
-   unique_ptr<A> aa(make_unique<A>());
-   unique_ptr<NoDefaultCtor> nrbi3(static_cast<NoDefaultCtor*>(nrBuilder.resolveByInstance(aa.get())));
-   if(!nrbi3)
-      cout << "nrbi is null as it should be " << endl;
-   else
-      cout << "some other type than expected " << nrbi3->get() << endl;
-
-   unique_ptr<D> nrbi2(static_cast<D*>(nrBuilder.resolveByInstance(ac.get())));
-   cout << "nrbi " << nrbi2->get() << endl;
-
-   //nrResolved.reset( nrBuilder.resolve<A>());
-   //cout << "nrresolve " << nrResolved->get() << endl; //runtime access violation as expected
-
-   unique_ptr<D> nrr(static_cast<D*>(nrBuilder.resolve<A>()));
-   if(nrr)
-      cout << "nrresolve " << nrr->get() << endl;
-   else
-      cout << "nrr is null" << endl;
-
 
    nrBuilder.registerType<NoDefaultCtorSub>().buildWithFactory({Factory::create}).forType<A>();
    unique_ptr<NoDefaultCtorSub> nr3(static_cast<NoDefaultCtorSub*>(nrBuilder.resolve<A>()));
@@ -359,7 +336,25 @@ int main(int argc, char* argv[])
    nrBuilder.registerType<NoDefaultCtorSub>().buildWithFactory({[](){ return new NoDefaultCtorSub(3,6);}}).forType<A>();
    unique_ptr<NoDefaultCtorSub> nr4(static_cast<NoDefaultCtorSub*>(nrBuilder.resolve<A>()));
    cout << "nr4 " << nr4->get() << " " << (nr4->get() == -3) << endl;
-   */
+
+   //////////////////////////////
+
+   fioc::TBRegistry<std::unordered_map, std::unique_ptr<A>> uBuilder;
+
+   uBuilder.registerType<A>().forType<B>();
+   unique_ptr<A> ua(uBuilder.resolve<B>());
+   cout << "ua " << ua->get() << " " << (ua->get() == 1) << endl;
+
+   uBuilder.registerType<C>().forType<B>();
+   unique_ptr<A> uc(uBuilder.resolve<B>());
+   cout << "ua " << uc->get() << " " << (uc->get() == 2) << endl;
+
+   B bb;
+
+   unique_ptr<A> uci(uBuilder.resolveByInstance(&bb));
+   cout << "uci " << uci->get() << " " << (uci->get() == 2) << endl;
+   //uBuilder.registerType<B>().forType<C>(); A is not a common type for be which is required when used with unique_ptr resolution
+   
    
 
    /////////////////////////////
