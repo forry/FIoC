@@ -136,12 +136,12 @@ namespace fioc
 
          if constexpr(std::is_default_constructible_v<CreatedType>)
          {
-            factoryFunctor = make_unique<FactoryFunctor<CreatedType*>>();
+            factoryFunctor = std::make_unique<FactoryFunctor<CreatedType*>>();
             factoryFunctor->f = []() { return new CreatedType(); };
          }
          else
          {
-            factoryFunctor = make_unique<NullFactory<CreatedType*>>();
+            factoryFunctor = std::make_unique<NullFactory<CreatedType*>>();
          }
 
          return IntermediateReturn<CreatedType>{container, std::move(factoryFunctor)};
