@@ -218,12 +218,12 @@ namespace fioc
 
          if constexpr(std::is_default_constructible_v<BoundType>)
          {
-            factoryFunctor = make_unique<FactoryFunctor<BoundType*>>();
+            factoryFunctor = std::make_unique<FactoryFunctor<BoundType*>>();
             factoryFunctor->f = []() { return new BoundType(); };
          }
          else
          {
-            factoryFunctor = make_unique<NullFactory<BoundType*>>();
+            factoryFunctor = std::make_unique<NullFactory<BoundType*>>();
          }
 
          return IntermediateReturn<BoundType>{container, std::move(factoryFunctor)};
