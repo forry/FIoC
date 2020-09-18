@@ -90,7 +90,7 @@ namespace fioc
          return static_cast<CommonType*>((*it->second)());
       }
 
-      template<typename CreatedType, typename...Args>
+      template<typename CreatedType, bool isConstructible, typename...Args>
       struct IntermediateReturn
       {
          IntermediateReturn(Map& map, std::unique_ptr<FactoryFunctor<CreatedType*, Args...>> ff)
@@ -102,25 +102,26 @@ namespace fioc
          template<typename BindType>
          void forType()
          {
+            static_assert(isConstructible, "The type you want to be build (CreatedType) has no appropriate construction method. Either register it with existing constructor or factory.\n\tThe common mistake is calling fioc.registerType<A>().forType<B>(); where A doesn't have a default constructor.");
             container.insert_or_assign(Key{typeid(BindType)}, std::move(factoryFunctor));
          }
 
          template<typename...Args>
-         IntermediateReturn<CreatedType, Args...> buildWithConstructor()
+         IntermediateReturn<CreatedType, true, Args...> buildWithConstructor()
          {
             std::unique_ptr<FactoryFunctor<CreatedType*, Args...>> factoryFunctor = std::make_unique<FactoryFunctor<CreatedType*, Args...>>();
             factoryFunctor->f = [](Args... args) { return new CreatedType(args...); };
 
-            return IntermediateReturn<CreatedType, Args...>(container, std::move(factoryFunctor));
+            return IntermediateReturn<CreatedType, true, Args...>(container, std::move(factoryFunctor));
          }
 
          template<typename ...Args>
-         IntermediateReturn<CreatedType, Args...> buildWithFactory(std::function<CreatedType*(Args...)> f)
+         IntermediateReturn<CreatedType, true, Args...> buildWithFactory(std::function<CreatedType*(Args...)> f)
          {
             std::unique_ptr<FactoryFunctor<CreatedType*, Args...>> factoryFunctor = std::make_unique<FactoryFunctor<CreatedType*, Args...>>();
             factoryFunctor->f = f;
 
-            return IntermediateReturn<CreatedType, Args...>(container, std::move(factoryFunctor));
+            return IntermediateReturn<CreatedType, true, Args...>(container, std::move(factoryFunctor));
          }
 
       protected:
@@ -130,7 +131,7 @@ namespace fioc
       };
 
       template<typename CreatedType>
-      IntermediateReturn<CreatedType> registerType()
+      IntermediateReturn< CreatedType, std::is_default_constructible_v<CreatedType> > registerType()
       {
          std::unique_ptr<FactoryFunctor<CreatedType*>> factoryFunctor;
 
@@ -138,13 +139,13 @@ namespace fioc
          {
             factoryFunctor = std::make_unique<FactoryFunctor<CreatedType*>>();
             factoryFunctor->f = []() { return new CreatedType(); };
+            return IntermediateReturn<CreatedType, true>{container, std::move(factoryFunctor)};
          }
          else
          {
             factoryFunctor = std::make_unique<NullFactory<CreatedType*>>();
-         }
-
-         return IntermediateReturn<CreatedType>{container, std::move(factoryFunctor)};
+            return IntermediateReturn<CreatedType, false>{container, std::move(factoryFunctor)};
+         }         
       }
 
 

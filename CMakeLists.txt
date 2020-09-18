@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.0)
 
 project("FIoC" 
-         VERSION 0.1.0.0
+         VERSION 0.2.0.0
          DESCRIPTION "Lightweight C++ IoC implementation"
 )
 

@@ -302,7 +302,15 @@ int main(int argc, char* argv[])
 
    fioc::TBRegistry<std::map> nrBuilder;
    nrBuilder.registerType<C>().forType<B>();
-   nrBuilder.registerType<NoDefaultCtor>().forType<A>();
+
+
+   /* Class without default will assert when tried to register it with the missing ctor. */
+   //nrBuilder.registerType<NoDefaultCtor>().forType<A>(); // assert
+
+   /* Can't find the appropriate ctor. Althoug .buildWithConstructor<float,float>() only leads to warning for precision loss because ctor(int,int) exists and float is impl. convertible to int.*/
+   //nrBuilder.registerType<NoDefaultCtor>().buildWithConstructor<float,int,int>().forType<A>(); // compiler error
+
+
    unique_ptr<A> nrResolved (static_cast<A*>(nrBuilder.resolve<B>()));
 
    cout << "nrresolve " << nrResolved->get() << endl;
@@ -345,8 +353,6 @@ int main(int argc, char* argv[])
    nrBuilder.registerType<NoDefaultCtorSub>().buildWithFactory({[](){ return new NoDefaultCtorSub(3,6);}}).forType<A>();
    unique_ptr<NoDefaultCtorSub> nr4(static_cast<NoDefaultCtorSub*>(nrBuilder.resolve<A>()));
    cout << "nr4 " << nr4->get() << " " << (nr4->get() == -3) << endl;
-
-   
 
    /////////////////////////////
    
@@ -419,6 +425,8 @@ int main(int argc, char* argv[])
    builder.registerType<NoDefaultCtor>().as<FalseInheritance>();
    unique_ptr<NoDefaultCtor> e4(builder.resolve<NoDefaultCtor>(3, 4));
    */
+
+   
 
    return 0;
 }
