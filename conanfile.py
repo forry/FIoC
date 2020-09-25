@@ -7,7 +7,7 @@ class FIoCConan(ConanFile):
     scm = {
          "type": "git",
          "subfolder": "",
-         "url": "autohttps://github.com/forry/FIoC.git",
+         "url": "https://github.com/forry/FIoC.git",
          "revision": "auto",
      }
     name = "FIoC"
