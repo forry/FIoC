@@ -11,7 +11,7 @@ class FIoCConan(ConanFile):
          "revision": "auto",
      }
     name = "FIoC"
-    version = "1.0.0"
+    version = "1.0.1"
     license = "free to use"
     author = ""
     url = "https://github.com/forry/FIoC"

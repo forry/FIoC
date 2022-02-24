@@ -51,7 +51,7 @@ namespace fioc
    public:
       NullFactory() : FactoryFunctor<R, ARGS...>()
       {
-         f = [](ARGS... args) {return nullptr; };
+         this->f = [](ARGS... args) {return nullptr; };
       }
    };
 }
