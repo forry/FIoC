@@ -6,12 +6,10 @@
 namespace fioc
 {
    /**
-    * Pure abstract interface for default constructor call.
+    * Common class for functors so that we can specify a type for the container value.
     */
    class DefaultConstructorFunctor
    {
-   public:
-      virtual void* operator()() = 0;
    };
 
 
@@ -27,22 +25,7 @@ namespace fioc
    class FactoryFunctor : public DefaultConstructorFunctor
    {
    public:
-      R retVal;
-      std::tuple<ARGS...> arguments;
-
       std::function<R(ARGS...)> f;
-
-      virtual void* operator()() override
-      {
-         this->retVal = this->callFunc(typename std::index_sequence_for<ARGS...>{});
-         return retVal;
-      };
-
-      template<int ...S>
-      R callFunc(std::index_sequence<S...>)
-      {
-         return f(std::get<S>(arguments) ...);
-      }
    };
 
    template <typename R, typename ...ARGS>

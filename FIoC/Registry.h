@@ -70,8 +70,7 @@ namespace fioc
             return nullptr;
          }
          FactoryFunctor<T*, Args...> *factoryFunctor = static_cast<FactoryFunctor<T*, Args...> *>(it->second.get());
-         factoryFunctor->arguments = std::make_tuple(args...);
-         return static_cast<T*>((*it->second)());
+         return factoryFunctor->f(args...);
 
       }
 

@@ -5,6 +5,8 @@
 #include <typeindex>
 #include <memory>
 
+#include <iostream>
+
 namespace fioc
 {
    /**
@@ -52,7 +54,7 @@ namespace fioc
     * passed to the factory/ctor (first use) or the parameters of the last resolve call (that got saved there in the wrapper functor).
     * 
     * \tparam _Map Customizable container implementation. Should satisfy AssociativeContainer or UnorderedAssociativeContainer like std::map or std::unordered map.
-    * \tparam _CommonType The type that should be returned by the resolve function. If not supplied the default is void*.
+    * \tparam _CommonType The type that pointer to it should be returned by the resolve function. If not supplied the default is void.
     */
    template <template <typename ... > class _Map, typename _CommonType = void, typename ...Args>
    class TBRegistry
@@ -72,8 +74,7 @@ namespace fioc
             return nullptr;
          }
          FactoryFunctor<CommonType*, Args...> *factoryFunctor = static_cast<FactoryFunctor<CommonType*, Args...> *>(it->second.get());
-         factoryFunctor->arguments = std::make_tuple(args...);
-         return static_cast<CommonType*>((*it->second)());
+         return factoryFunctor->f(args...);
       }
 
       template<typename T, typename ...Args>
@@ -86,14 +87,13 @@ namespace fioc
             return nullptr;
          }
          FactoryFunctor<CommonType*, Args...> *factoryFunctor = static_cast<FactoryFunctor<CommonType*, Args...> *>(it->second.get());
-         factoryFunctor->arguments = std::make_tuple(args...);
-         return static_cast<CommonType*>((*it->second)());
+         return factoryFunctor->f(args...);
       }
 
       template<typename CreatedType, bool isConstructible, typename...Args>
       struct IntermediateReturn
       {
-         IntermediateReturn(Map& map, std::unique_ptr<FactoryFunctor<CreatedType*, Args...>> ff)
+         IntermediateReturn(Map& map, std::unique_ptr<FactoryFunctor<CommonType*, Args...>> ff)
             : container(map)
          {
             factoryFunctor = std::move(ff);
@@ -109,16 +109,16 @@ namespace fioc
          template<typename...Args>
          IntermediateReturn<CreatedType, true, Args...> buildWithConstructor()
          {
-            std::unique_ptr<FactoryFunctor<CreatedType*, Args...>> factoryFunctor = std::make_unique<FactoryFunctor<CreatedType*, Args...>>();
-            factoryFunctor->f = [](Args... args) { return new CreatedType(args...); };
+            std::unique_ptr<FactoryFunctor<CommonType*, Args...>> factoryFunctor = std::make_unique<FactoryFunctor<CommonType*, Args...>>();
+            factoryFunctor->f = [](Args... args) { return static_cast<CommonType*> (new CreatedType(args...)); };
 
             return IntermediateReturn<CreatedType, true, Args...>(container, std::move(factoryFunctor));
          }
 
          template<typename ...Args>
-         IntermediateReturn<CreatedType, true, Args...> buildWithFactory(std::function<CreatedType*(Args...)> f)
+         IntermediateReturn<CreatedType, true, Args...> buildWithFactory(std::function<CommonType*(Args...)> f)
          {
-            std::unique_ptr<FactoryFunctor<CreatedType*, Args...>> factoryFunctor = std::make_unique<FactoryFunctor<CreatedType*, Args...>>();
+            std::unique_ptr<FactoryFunctor<CommonType*, Args...>> factoryFunctor = std::make_unique<FactoryFunctor<CommonType*, Args...>>();
             factoryFunctor->f = f;
 
             return IntermediateReturn<CreatedType, true, Args...>(container, std::move(factoryFunctor));
@@ -127,23 +127,23 @@ namespace fioc
       protected:
 
          Map& container;
-         std::unique_ptr<FactoryFunctor<CreatedType*, Args...>> factoryFunctor;
+         std::unique_ptr<FactoryFunctor<CommonType*, Args...>> factoryFunctor;
       };
 
       template<typename CreatedType>
       IntermediateReturn< CreatedType, std::is_default_constructible_v<CreatedType> > registerType()
       {
-         std::unique_ptr<FactoryFunctor<CreatedType*>> factoryFunctor;
+         std::unique_ptr<FactoryFunctor<CommonType*>> factoryFunctor;
 
          if constexpr(std::is_default_constructible_v<CreatedType>)
          {
-            factoryFunctor = std::make_unique<FactoryFunctor<CreatedType*>>();
-            factoryFunctor->f = []() { return new CreatedType(); };
+            factoryFunctor = std::make_unique<FactoryFunctor<CommonType*>>();
+            factoryFunctor->f = []() ->CommonType* { return static_cast<CommonType*> (new CreatedType()); };
             return IntermediateReturn<CreatedType, true>{container, std::move(factoryFunctor)};
          }
          else
          {
-            factoryFunctor = std::make_unique<NullFactory<CreatedType*>>();
+            factoryFunctor = std::make_unique<NullFactory<CommonType*>>();
             return IntermediateReturn<CreatedType, false>{container, std::move(factoryFunctor)};
          }         
       }

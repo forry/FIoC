@@ -1,0 +1,7 @@
+# Affects to all packages but cool/version@user/dev
+[includedirs]
+.
+
+# The source_folder, build_folder are useful for workspaces
+[source_folder]
+.

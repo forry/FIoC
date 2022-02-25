@@ -11,7 +11,7 @@ class FIoCConan(ConanFile):
          "revision": "auto",
      }
     name = "FIoC"
-    version = "1.0.1"
+    version = "1.0.2"
     license = "free to use"
     author = ""
     url = "https://github.com/forry/FIoC"
@@ -22,3 +22,6 @@ class FIoCConan(ConanFile):
 
     def package(self):
         self.copy("*.h", "include")
+
+    def package_id(self):
+        self.info.header_only()

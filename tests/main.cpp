@@ -269,6 +269,14 @@ public:
    }
 };
 
+class RefCtor
+{
+public:
+   RefCtor(int& x):val(x){}
+   int get(){return val;}
+
+   int val;
+};
 
 
 int main(int argc, char* argv[])
@@ -299,7 +307,7 @@ int main(int argc, char* argv[])
    ///
 
 
-
+   
    fioc::TBRegistry<std::map> nrBuilder;
    nrBuilder.registerType<C>().forType<B>();
 
@@ -310,40 +318,42 @@ int main(int argc, char* argv[])
    /* Can't find the appropriate ctor. Althoug .buildWithConstructor<float,float>() only leads to warning for precision loss because ctor(int,int) exists and float is impl. convertible to int.*/
    //nrBuilder.registerType<NoDefaultCtor>().buildWithConstructor<float,int,int>().forType<A>(); // compiler error
 
-
+   /*
    unique_ptr<A> nrResolved (static_cast<A*>(nrBuilder.resolve<B>()));
 
-   cout << "nrresolve " << nrResolved->get() << endl;
-
+   cout << "nrresolve " << (nrResolved->get() == 2)<< endl;
+   */
    B bb;
    unique_ptr<A> nrbi(static_cast<A*>(nrBuilder.resolveByInstance(&bb)));
-   cout << "nrbi " << nrbi->get() << endl;
+   cout << "nrbi " << (nrbi->get() == 2)<< endl;
 
-
+   
    nrBuilder.registerType<NoDefaultCtor>().buildWithConstructor<int, int>().forType<A>();
    unique_ptr<NoDefaultCtor> nr2(static_cast<NoDefaultCtor*>(nrBuilder.resolve<A>(1, 1)));
    cout << "nr2 " << (nr2->get() == 2) << endl;
 
    nrBuilder.registerType<D>().forType<C>();
    unique_ptr<A> ac(make_unique<C>());
+
    unique_ptr<A> aa(make_unique<A>());
    unique_ptr<NoDefaultCtor> nrbi3(static_cast<NoDefaultCtor*>(nrBuilder.resolveByInstance(aa.get())));
    if(!nrbi3)
-      cout << "nrbi is null as it should be " << endl;
+      cout << "nrbi is null as it should be true" << endl;
    else
-      cout << "some other type than expected " << nrbi3->get() << endl;
+      cout << "some other type than expected " << nrbi3->get() << " (false) - this needs to be solved another way" << endl;
 
    unique_ptr<D> nrbi2(static_cast<D*>(nrBuilder.resolveByInstance(ac.get())));
-   cout << "nrbi " << nrbi2->get() << endl;
+   cout << "nrbi " << (nrbi2->get() == 3) << endl;
 
    //nrResolved.reset( nrBuilder.resolve<A>());
    //cout << "nrresolve " << nrResolved->get() << endl; //runtime access violation as expected
 
-   unique_ptr<D> nrr(static_cast<D*>(nrBuilder.resolve<A>()));
+   
+   unique_ptr<D> nrr(static_cast<D*>(nrBuilder.resolve<A>())); //not enough parameters for registered ctor and not subtype of D
    if(nrr)
-      cout << "nrresolve " << nrr->get() << endl;
+      cout << "nrresolve " << nrr->get() << " false"<< endl;
    else
-      cout << "nrr is null" << endl;
+      cout << "nrr is null true" << endl;
 
 
    nrBuilder.registerType<NoDefaultCtorSub>().buildWithFactory({Factory::create}).forType<A>();
@@ -353,7 +363,16 @@ int main(int argc, char* argv[])
    nrBuilder.registerType<NoDefaultCtorSub>().buildWithFactory({[](){ return new NoDefaultCtorSub(3,6);}}).forType<A>();
    unique_ptr<NoDefaultCtorSub> nr4(static_cast<NoDefaultCtorSub*>(nrBuilder.resolve<A>()));
    cout << "nr4 " << nr4->get() << " " << (nr4->get() == -3) << endl;
-
+   
+   int x = 5;
+   int& z=x;
+   //std::tuple<int&> tup;
+   nrBuilder.registerType<RefCtor>().buildWithConstructor<int&>().forType<A>();
+   unique_ptr<RefCtor> nrRef(static_cast<RefCtor*>(nrBuilder.resolve<A,int&>(z)));
+   cout << "Reference in Ctor " << nrRef->get() << " " << (nrRef->get() == 5) << endl;
+   nrRef.reset(static_cast<RefCtor*>(nrBuilder.resolveByInstance(aa.get(),z)));
+   cout << "Reference in Ctor " << nrRef->get() << " " << (nrRef->get() == 5) << endl;
+   
    /////////////////////////////
    
    fioc::Registry<std::map> builder;
@@ -361,58 +380,58 @@ int main(int argc, char* argv[])
    builder.registerType<A>();
    unique_ptr<A> a(builder.resolve<A>());
    if(a)
-      cout << "A " << a->get() <<endl;
+      cout << "A " << (a->get() == 1) <<endl;
    else
-      cout << "A not found" << endl;
+      cout << "A not found false" << endl;
 
    //builder.registerTypeAs<A,C>();
    builder.registerType<A>().as<C>();
    a.reset(builder.resolve<A>());
    if(a)
-      cout << "A as C " << a->get() << endl;
+      cout << "A as C " << (a->get() == 2) << endl;
    else
-      cout << "A not found" << endl;
+      cout << "A not found false" << endl;
      
 
    builder.registerType<B>().buildWithConstructor<int>();
    unique_ptr<B> b((builder.resolve<B>(32)));
    if(b)
-      cout << "B " << b->get() << endl;
-   else cout << "not b" << endl;
+      cout << "B " << (b->get() == 32) << endl;
+   else cout << "not b false" << endl;
 
    builder.registerType<B>().buildWithConstructor<>();
    unique_ptr<B> b1((builder.resolve<B>()));
-   cout << "B1 " << b1->get() << endl;
+   cout << "B1 " << (b1->get() == 0) << endl;
    
    builder.registerType<B>();
    unique_ptr<B> b2((builder.resolve<B>()));
-   cout << "B2 " << b2->get() << endl;
+   cout << "B2 " << (b2->get() == 0) << endl;
 
 
    builder.registerType<NoDefaultCtor>().buildWithConstructor<int,int>();
    unique_ptr<NoDefaultCtor> n(builder.resolve<NoDefaultCtor>(3,7));
-   cout << "NoDef " << n->get() << endl;
+   cout << "NoDef " << (n->get() == 10) << endl;
    
    builder.registerType<NoDefaultCtor>().as<NoDefaultCtorSub>().buildWithConstructor<int,int>();
    unique_ptr<NoDefaultCtor> n2(builder.resolve<NoDefaultCtor>(3, 4));
-   cout << "NoDef " << n2->get() << endl;
+   cout << "NoDef " << (n2->get() == 7) << endl;
 
    std::function<NoDefaultCtorSub*()> fac = Factory::create;
 
    builder.registerType<NoDefaultCtorSub>().buildWithFactory({Factory::create});
    unique_ptr<NoDefaultCtor> n3(builder.resolve<NoDefaultCtorSub>());
-   cout << "NoDef " << n3->get() << endl;
+   cout << "NoDef " << (n3->get() == 11) << endl;
 
    builder.registerType<NoDefaultCtor>().as<NoDefaultCtorSub>().buildWithFactory({Factory::create});
    unique_ptr<NoDefaultCtor> n4(builder.resolve<NoDefaultCtor>());
-   cout << "NoDef " << n4->get() << endl;
+   cout << "NoDef " << (n4->get() == 11) << endl;
 
    AnotherFac anotherFactory{2}; // register builder with one parameter stored and one requesting by resolve call
    //std::function<NoDefaultCtorSub*(const AnotherFac&,int)> anfacfunc = &AnotherFac::operator();
    //builder.registerType<NoDefaultCtor>().as<NoDefaultCtorSub>().buildWithFactory<int>({std::bind(std::function<NoDefaultCtorSub*(const AnotherFac&,int)>{&AnotherFac::operator()},anotherFactory,std::placeholders::_1)});
    builder.registerType<NoDefaultCtor>().as<NoDefaultCtorSub>().buildWithFactory<int>({[anotherFactory](int x){return anotherFactory(x);}});
    unique_ptr<NoDefaultCtor> n5(builder.resolve<NoDefaultCtor>(7));
-   cout << "NoDef " << n5->get() << endl;
+   cout << "NoDef " << (n5->get() == 9) << endl;
 
    //Compile-time error - which is good since not only A is not a subclass of NoDefaultCtor but it doesn't have appropriate ctor signature
    /*
